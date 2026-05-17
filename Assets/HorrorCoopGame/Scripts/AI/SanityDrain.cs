@@ -1,4 +1,5 @@
 using HorrorCoopGame.Player;
+using HorrorCoopGame.Game;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -39,6 +40,11 @@ namespace HorrorCoopGame.AI
 
         private void Update()
         {
+            if (!IsRoundPlaying())
+            {
+                return;
+            }
+
             if (IsServer && Time.time >= nextEvaluationTime)
             {
                 nextEvaluationTime = Time.time + evaluationInterval;
@@ -101,6 +107,11 @@ namespace HorrorCoopGame.AI
         private void ScheduleNextHallucination()
         {
             nextHallucinationTime = Time.time + Random.Range(hallucinationMinInterval, hallucinationMaxInterval);
+        }
+
+        private static bool IsRoundPlaying()
+        {
+            return GameManager.Instance == null || GameManager.Instance.Phase.Value == GamePhase.Playing;
         }
     }
 }

@@ -1,4 +1,5 @@
 using HorrorCoopGame.Interaction;
+using HorrorCoopGame.Game;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -36,7 +37,7 @@ namespace HorrorCoopGame.Building
 
         public void OnBuildMode(InputValue value)
         {
-            if (!value.isPressed)
+            if (!value.isPressed || !IsRoundPlaying())
             {
                 return;
             }
@@ -57,7 +58,7 @@ namespace HorrorCoopGame.Building
         /// </summary>
         public void OnConfirmBuild(InputValue value)
         {
-            if (!value.isPressed || !isBuildMode || currentBuildable == null)
+            if (!value.isPressed || !isBuildMode || currentBuildable == null || !IsRoundPlaying())
             {
                 return;
             }
@@ -72,6 +73,15 @@ namespace HorrorCoopGame.Building
 
         private void Update()
         {
+            if (!IsRoundPlaying())
+            {
+                if (ghostInstance != null)
+                {
+                    ghostInstance.SetActive(false);
+                }
+                return;
+            }
+
             if (!isBuildMode || ghostInstance == null || currentBuildable == null)
             {
                 return;
@@ -188,6 +198,11 @@ namespace HorrorCoopGame.Building
             }
 
             requesterInventory.RemoveItemQuantity(currentBuildable.requiredItemName, currentBuildable.requiredItemAmount);
+        }
+
+        private static bool IsRoundPlaying()
+        {
+            return GameManager.Instance == null || GameManager.Instance.Phase.Value == GamePhase.Playing;
         }
     }
 }

@@ -71,6 +71,7 @@ namespace HorrorCoopGame.Game
             {
                 Phase.Value = GamePhase.Lobby;
                 RoundStartTime.Value = -1f;
+                ResetRoundStateServer();
             }
         }
 
@@ -91,8 +92,10 @@ namespace HorrorCoopGame.Game
                 return;
             }
 
+            ResetRoundStateServer();
             Phase.Value = GamePhase.Playing;
             RoundStartTime.Value = (float)NetworkManager.ServerTime.Time;
+            nextConditionCheckTime = 0f;
         }
 
         [ServerRpc(RequireOwnership = false)]
@@ -112,8 +115,10 @@ namespace HorrorCoopGame.Game
                 return;
             }
 
+            ResetRoundStateServer();
             Phase.Value = GamePhase.Lobby;
             RoundStartTime.Value = -1f;
+            nextConditionCheckTime = 0f;
         }
 
         [ServerRpc(RequireOwnership = false)]
@@ -211,6 +216,39 @@ namespace HorrorCoopGame.Game
             }
 
             return totalPlayers > 0 && downedPlayers >= totalPlayers;
+        }
+
+        private void ResetRoundStateServer()
+        {
+            if (!IsServer || NetworkManager == null)
+            {
+                return;
+            }
+
+            VehicleRepair repair = vehicleRepair;
+            if (repair == null)
+            {
+                repair = FindObjectOfType<VehicleRepair>();
+                vehicleRepair = repair;
+            }
+
+            if (repair != null)
+            {
+                repair.ResetRepairStateServer();
+            }
+
+            foreach (var kvp in NetworkManager.ConnectedClients)
+            {
+                NetworkObject playerObject = kvp.Value.PlayerObject;
+                if (playerObject == null || !playerObject.TryGetComponent(out PlayerStats stats))
+                {
+                    continue;
+                }
+
+                stats.Health.Value = 100f;
+                stats.Stamina.Value = 100f;
+                stats.Sanity.Value = 100f;
+            }
         }
     }
 }
