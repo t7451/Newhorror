@@ -21,11 +21,40 @@ Assets/
 ```
 
 ## Included Scripts
+### Phase 1 — Networking
 - `Assets/HorrorCoopGame/Scripts/Networking/NetworkWebSocketSetup.cs`
 - `Assets/HorrorCoopGame/Scripts/Networking/RelayManager.cs`
 - `Assets/HorrorCoopGame/Scripts/Networking/NetworkMenuUI.cs`
+
+### Phase 2 — Player
 - `Assets/HorrorCoopGame/Scripts/Player/PlayerController.cs`
 - `Assets/HorrorCoopGame/Scripts/Player/PlayerStats.cs`
+
+### Phase 3 — Inventory & Interaction (object pooled)
+- `Assets/HorrorCoopGame/Scripts/Interaction/ItemData.cs` (ScriptableObject)
+- `Assets/HorrorCoopGame/Scripts/Interaction/IInteractable.cs`
+- `Assets/HorrorCoopGame/Scripts/Interaction/NetworkedPoolManager.cs`
+- `Assets/HorrorCoopGame/Scripts/Interaction/ScrapPile.cs`
+- `Assets/HorrorCoopGame/Scripts/Interaction/InventorySystem.cs`
+- `Assets/HorrorCoopGame/Scripts/Interaction/PlayerInteractionRaycast.cs`
+- `Assets/HorrorCoopGame/Scripts/Interaction/InventoryGridUI.cs`
+
+### Phase 4 — Scrap-metal Building
+- `Assets/HorrorCoopGame/Scripts/Building/BuildableData.cs` (ScriptableObject)
+- `Assets/HorrorCoopGame/Scripts/Building/BuildingManager.cs` (snap-to-grid ghost + ServerRpc place)
+- `Assets/HorrorCoopGame/Scripts/Building/StructureHealth.cs`
+
+### Phase 5 — Escape Mechanic
+- `Assets/HorrorCoopGame/Scripts/Vehicle/VehicleRepair.cs` (CarBattery + Alternator + SparkPlugs)
+
+### Phase 6 — AI & Sanity
+- `Assets/HorrorCoopGame/Scripts/AI/EnemyAI.cs` (state machine + throttled NavMesh updates)
+- `Assets/HorrorCoopGame/Scripts/AI/SanityDrain.cs` (darkness drain + audio hallucinations)
+
+### Phase 7 — Polish
+- `Assets/HorrorCoopGame/Scripts/Environment/DayNightCycle.cs` (baked-lighting friendly)
+- `Assets/HorrorCoopGame/Scripts/Environment/PerformantFlashlight.cs` (shadowless spotlight)
+- `Assets/HorrorCoopGame/Scripts/UI/ResponsiveCanvasScaler.cs` (1920x1080 reference, adaptive match)
 
 ## On-Screen Touch Setup (Phase 2)
 1. Install packages:
