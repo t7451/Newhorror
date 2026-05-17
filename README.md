@@ -20,6 +20,86 @@ Assets/
     └── TouchControls/
 ```
 
+## Linux Unity Hub Installation
+Use Unity Hub to install and manage the Unity Editor version listed in
+`ProjectSettings/ProjectVersion.txt`. On Linux, install Unity Hub through Unity's
+package repositories so regular system updates can keep it current.
+
+### Ubuntu
+Install `curl` if it is not already available:
+
+```bash
+sudo apt install curl
+```
+
+Add the Unity Hub signing key and stable repository (amd64 only):
+
+```bash
+sudo install -d /etc/apt/keyrings
+curl -fsSL https://hub.unity3d.com/linux/keys/public | sudo gpg --dearmor -o /etc/apt/keyrings/unityhub.gpg
+echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/unityhub.gpg] https://hub.unity3d.com/linux/repos/deb stable main" | sudo tee /etc/apt/sources.list.d/unityhub.list
+```
+
+Update the package cache and install Unity Hub:
+
+```bash
+sudo apt update
+sudo apt install unityhub
+```
+
+To install the Linux beta channel instead, use the `unstable` distribution in a
+separate source list entry:
+
+```bash
+sudo install -d /etc/apt/keyrings
+curl -fsSL https://hub.unity3d.com/linux/keys/public | sudo gpg --dearmor -o /etc/apt/keyrings/unityhub.gpg
+echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/unityhub.gpg] https://hub.unity3d.com/linux/repos/deb unstable main" | sudo tee /etc/apt/sources.list.d/unityhub-beta.list
+sudo apt update
+sudo apt install unityhub
+```
+
+Confirm `/etc/apt/keyrings` exists, the installing user or group can write to it,
+and `/etc/apt/keyrings/unityhub.gpg` is readable after creation.
+
+### RHEL or CentOS
+Add Unity's RPM signing key and stable repository:
+
+```bash
+sudo rpm --import https://hub.unity3d.com/linux/keys/public
+sudo tee /etc/yum.repos.d/unityhub.repo >/dev/null <<'EOF'
+[unityhub]
+name=Unity Hub
+baseurl=https://hub.unity3d.com/linux/repos/rpm/stable
+enabled=1
+gpgcheck=1
+gpgkey=https://hub.unity3d.com/linux/keys/public
+EOF
+```
+
+Install Unity Hub with the package manager available on your distribution:
+
+```bash
+sudo dnf install unityhub
+# or
+sudo yum install unityhub
+```
+
+For beta builds, replace `stable` with `unstable` in the repository `baseurl`.
+
+Use the same package manager to update or remove Unity Hub:
+
+```bash
+sudo dnf update unityhub
+sudo dnf remove unityhub
+# or replace dnf with yum on older systems
+```
+
+On Ubuntu, remove Unity Hub with:
+
+```bash
+sudo apt remove unityhub
+```
+
 ## Included Scripts
 ### Phase 1 — Networking
 - `Assets/HorrorCoopGame/Scripts/Networking/NetworkWebSocketSetup.cs`
