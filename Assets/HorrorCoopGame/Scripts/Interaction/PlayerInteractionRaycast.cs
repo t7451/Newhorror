@@ -1,4 +1,5 @@
 using TMPro;
+using HorrorCoopGame.Game;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -44,6 +45,14 @@ namespace HorrorCoopGame.Interaction
                 return;
             }
 
+            if (!IsRoundPlaying())
+            {
+                currentTarget = null;
+                interactPressed = false;
+                UpdatePromptUi();
+                return;
+            }
+
             UpdateTarget();
             UpdatePromptUi();
 
@@ -55,6 +64,11 @@ namespace HorrorCoopGame.Interaction
                     currentTarget.Interact(NetworkManager.Singleton.LocalClientId);
                 }
             }
+        }
+
+        private static bool IsRoundPlaying()
+        {
+            return GameManager.Instance == null || GameManager.Instance.Phase.Value == GamePhase.Playing;
         }
 
         private void UpdateTarget()
