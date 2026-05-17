@@ -8,8 +8,12 @@ namespace HorrorCoopGame.Networking
     {
         [SerializeField] private Button hostButton;
         [SerializeField] private Button joinButton;
+        [SerializeField] private Button disconnectButton;
         [SerializeField] private TMP_InputField joinCodeInput;
         [SerializeField] private TextMeshProUGUI statusText;
+        [SerializeField] private TextMeshProUGUI joinCodeText;
+        [SerializeField] private TextMeshProUGUI playerCountText;
+        [SerializeField] private bool hideMenuWhenConnected = true;
 
         private void Awake()
         {
@@ -22,6 +26,38 @@ namespace HorrorCoopGame.Networking
             {
                 joinButton.onClick.AddListener(OnJoinClicked);
             }
+
+            if (disconnectButton != null)
+            {
+                disconnectButton.onClick.AddListener(OnDisconnectClicked);
+            }
+        }
+
+        private void OnEnable()
+        {
+            if (RelayManager.Instance == null)
+            {
+                SetStatus("Networking backend not found.");
+                SetControlsInteractable(false);
+                return;
+            }
+
+            RelayManager.Instance.ConnectionStateChanged += OnConnectionStateChanged;
+            RelayManager.Instance.PlayerCountChanged += OnPlayerCountChanged;
+
+            OnConnectionStateChanged(RelayManager.Instance.CurrentState, RelayManager.Instance.StatusMessage);
+            OnPlayerCountChanged(RelayManager.Instance.ConnectedPlayerCount, RelayManager.Instance.MaxPlayerCount);
+        }
+
+        private void OnDisable()
+        {
+            if (RelayManager.Instance == null)
+            {
+                return;
+            }
+
+            RelayManager.Instance.ConnectionStateChanged -= OnConnectionStateChanged;
+            RelayManager.Instance.PlayerCountChanged -= OnPlayerCountChanged;
         }
 
         private void OnDestroy()
@@ -35,32 +71,30 @@ namespace HorrorCoopGame.Networking
             {
                 joinButton.onClick.RemoveListener(OnJoinClicked);
             }
+
+            if (disconnectButton != null)
+            {
+                disconnectButton.onClick.RemoveListener(OnDisconnectClicked);
+            }
         }
 
         private async void OnHostClicked()
         {
-            if (statusText == null || RelayManager.Instance == null)
+            if (RelayManager.Instance == null)
             {
                 return;
             }
-
-            statusText.text = "Creating relay room...";
 
             string joinCode = await RelayManager.Instance.CreateRelayAsync();
-            if (string.IsNullOrEmpty(joinCode))
+            if (!string.IsNullOrEmpty(joinCode))
             {
-                statusText.text = "Failed to create room.";
-                return;
+                GUIUtility.systemCopyBuffer = joinCode;
             }
-
-            GUIUtility.systemCopyBuffer = joinCode;
-            statusText.text = $"Room created. Code: {joinCode}";
-            gameObject.SetActive(false);
         }
 
         private async void OnJoinClicked()
         {
-            if (statusText == null || RelayManager.Instance == null)
+            if (RelayManager.Instance == null)
             {
                 return;
             }
@@ -68,21 +102,83 @@ namespace HorrorCoopGame.Networking
             string joinCode = joinCodeInput != null ? joinCodeInput.text.Trim() : string.Empty;
             if (string.IsNullOrWhiteSpace(joinCode))
             {
-                statusText.text = "Enter a join code.";
+                SetStatus("Enter a join code.");
                 return;
             }
 
-            statusText.text = "Joining relay room...";
+            await RelayManager.Instance.JoinRelayAsync(joinCode);
+        }
 
-            bool joined = await RelayManager.Instance.JoinRelayAsync(joinCode);
-            if (!joined)
+        private void OnDisconnectClicked()
+        {
+            if (RelayManager.Instance == null)
             {
-                statusText.text = "Join failed.";
                 return;
             }
 
-            statusText.text = "Connected.";
-            gameObject.SetActive(false);
+            RelayManager.Instance.Disconnect();
+        }
+
+        private void OnConnectionStateChanged(RelayManager.RelayConnectionState state, string message)
+        {
+            bool busy = state == RelayManager.RelayConnectionState.Initializing ||
+                        state == RelayManager.RelayConnectionState.CreatingHost ||
+                        state == RelayManager.RelayConnectionState.Joining;
+            bool connected = state == RelayManager.RelayConnectionState.Connected;
+
+            SetStatus(message);
+            SetControlsInteractable(!busy && !connected);
+
+            if (disconnectButton != null)
+            {
+                disconnectButton.gameObject.SetActive(connected);
+                disconnectButton.interactable = connected;
+            }
+
+            if (joinCodeText != null)
+            {
+                string joinCode = RelayManager.Instance != null ? RelayManager.Instance.CurrentJoinCode : string.Empty;
+                joinCodeText.text = string.IsNullOrEmpty(joinCode) ? string.Empty : $"Join Code: {joinCode}";
+            }
+
+            if (hideMenuWhenConnected && connected)
+            {
+                gameObject.SetActive(false);
+            }
+        }
+
+        private void OnPlayerCountChanged(int connectedPlayers, int maxPlayers)
+        {
+            if (playerCountText != null)
+            {
+                playerCountText.text = maxPlayers > 0 ? $"Players: {connectedPlayers}/{maxPlayers}" : string.Empty;
+            }
+        }
+
+        private void SetStatus(string message)
+        {
+            if (statusText != null)
+            {
+                statusText.text = message;
+            }
+        }
+
+        private void SetControlsInteractable(bool interactable)
+        {
+            if (hostButton != null)
+            {
+                hostButton.interactable = interactable;
+            }
+
+            if (joinButton != null)
+            {
+                joinButton.interactable = interactable;
+            }
+
+            if (joinCodeInput != null)
+            {
+                joinCodeInput.interactable = interactable;
+            }
         }
     }
 }

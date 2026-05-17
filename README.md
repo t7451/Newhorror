@@ -25,6 +25,7 @@ Assets/
 - `Assets/HorrorCoopGame/Scripts/Networking/NetworkWebSocketSetup.cs`
 - `Assets/HorrorCoopGame/Scripts/Networking/RelayManager.cs`
 - `Assets/HorrorCoopGame/Scripts/Networking/NetworkMenuUI.cs`
+- `Assets/HorrorCoopGame/Scripts/Networking/NetworkStatusUI.cs`
 
 ### Phase 2 — Player
 - `Assets/HorrorCoopGame/Scripts/Player/PlayerController.cs`
@@ -76,4 +77,5 @@ Assets/
 1. Create a `NetworkManager` prefab with `UnityTransport`.
 2. Add `NetworkWebSocketSetup` on the same object to force `UnityTransport.UseWebSockets = true` (required for WebGL browser clients).
 3. Add `RelayManager` to a bootstrap scene object and wire `NetworkManager` reference.
-4. Build menu UI and attach `NetworkMenuUI` with Host/Join buttons, join code input, and status label.
+4. Build menu UI and attach `NetworkMenuUI` with Host/Join buttons, join code input, status label, and optional join-code/player-count/disconnect fields.
+5. Add `NetworkStatusUI` to an in-game HUD if you want connection status, relay join code, player count, and disconnect controls visible after the menu closes.
