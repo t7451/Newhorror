@@ -75,6 +75,22 @@ Add `PerformanceBootstrap` to a GameObject in your first-loaded scene. It auto-d
 - `EnemyAI` adaptively throttles destination updates (slower when no players are in detection range), uses `sqrMagnitude` to avoid per-tick `sqrt`, and caches its transform.
 - `PlayerInteractionRaycast` throttles physics raycasts/overlap queries (~12 Hz default) while still refreshing instantly on interact press, so prompts stay responsive without per-frame physics queries.
 
+### Phase 8 — Game UI &amp; Logic
+- `Assets/HorrorCoopGame/Scripts/Game/GamePhase.cs` (Lobby / Playing / Victory / Defeat enum)
+- `Assets/HorrorCoopGame/Scripts/Game/GameManager.cs` (server-authoritative phase + win/loss detection)
+- `Assets/HorrorCoopGame/Scripts/UI/GameHUD.cs` (health/stamina/sanity bars, repair progress, clock, phase banner, panel toggles)
+- `Assets/HorrorCoopGame/Scripts/UI/PauseMenuUI.cs` (host start, resume, leave session)
+
+## Game UI &amp; Logic Setup (Phase 8)
+1. Spawn a single `GameManager` `NetworkObject` in the gameplay scene (host spawns it; clients receive it via replication).
+2. Add a `GameHUD` Canvas (use `ResponsiveCanvasScaler`) with:
+   - Three filled `Image`s wired to `healthBarFill`, `staminaBarFill`, `sanityBarFill`.
+   - A full-screen black `Image` inside a `CanvasGroup` wired to `sanityVignette`.
+   - TMP text fields for `repairProgressText`, `clockText`, `phaseBannerText`, and `endScreenText`.
+   - Child `GameObject`s for `inventoryPanel` (hosting `InventoryGridUI`), `pausePanel` (hosting `PauseMenuUI`), and `endScreenPanel`.
+3. Add `Inventory` and `Pause` actions to your `InputActions` (e.g. `Tab` and `Escape`) and bind them to `GameHUD.OnInventory` / `GameHUD.OnPause` via `PlayerInput` send-messages, or call `ToggleInventory()` / `TogglePause()` from on-screen buttons for mobile.
+4. The host clicks **Start Game** on `PauseMenuUI` to transition the round from `Lobby` to `Playing`. Victory triggers when `VehicleRepair.IsRepaired` becomes true; defeat triggers when every connected player has 0 health (after a short grace period).
+
 ## On-Screen Touch Setup (Phase 2)
 1. Install packages:
    - **Input System**

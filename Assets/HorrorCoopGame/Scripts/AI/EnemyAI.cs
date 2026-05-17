@@ -1,4 +1,5 @@
 using HorrorCoopGame.Player;
+using HorrorCoopGame.Game;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.AI;
@@ -63,6 +64,17 @@ namespace HorrorCoopGame.AI
 
         private void Update()
         {
+            if (agent == null)
+            {
+                return;
+            }
+
+            if (!IsRoundPlaying())
+            {
+                agent.SetDestination(cachedTransform.position);
+                return;
+            }
+
             float now = Time.time;
             if (now < nextPathUpdateTime)
             {
@@ -199,6 +211,11 @@ namespace HorrorCoopGame.AI
             {
                 patrolTarget = patrolAnchor;
             }
+        }
+
+        private static bool IsRoundPlaying()
+        {
+            return GameManager.Instance == null || GameManager.Instance.Phase.Value == GamePhase.Playing;
         }
     }
 }

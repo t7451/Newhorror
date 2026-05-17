@@ -32,6 +32,24 @@ namespace HorrorCoopGame.Vehicle
             NetworkVariableWritePermission.Server);
 
         private readonly System.Collections.Generic.HashSet<string> installedServer = new();
+        private Vector3 initialPosition;
+        private Quaternion initialRotation;
+        private bool escapeSequenceStarted;
+        private Coroutine escapeRoutine;
+
+        private void Awake()
+        {
+            initialPosition = transform.position;
+            initialRotation = transform.rotation;
+        }
+
+        public override void OnNetworkSpawn()
+        {
+            if (IsServer)
+            {
+                ResetRepairStateServer();
+            }
+        }
 
         public string GetInteractPrompt()
         {
@@ -53,7 +71,7 @@ namespace HorrorCoopGame.Vehicle
         {
             if (IsRepaired.Value)
             {
-                StartEscapeClientRpc();
+                TryStartEscapeSequenceServer();
                 return;
             }
 
@@ -92,17 +110,70 @@ namespace HorrorCoopGame.Vehicle
                 if (installedServer.Count >= requiredComponents.Length)
                 {
                     IsRepaired.Value = true;
-                    StartEscapeClientRpc();
+                    TryStartEscapeSequenceServer();
                 }
 
                 return;
             }
         }
 
+        public void ResetRepairStateServer()
+        {
+            if (!IsServer)
+            {
+                return;
+            }
+
+            installedServer.Clear();
+            InstalledCount.Value = 0;
+            IsRepaired.Value = false;
+            escapeSequenceStarted = false;
+
+            if (escapeRoutine != null)
+            {
+                StopCoroutine(escapeRoutine);
+                escapeRoutine = null;
+            }
+
+            transform.SetPositionAndRotation(initialPosition, initialRotation);
+            if (IsSpawned)
+            {
+                ApplyResetPoseClientRpc(initialPosition, initialRotation);
+            }
+        }
+
+        private void TryStartEscapeSequenceServer()
+        {
+            if (!IsServer || escapeSequenceStarted)
+            {
+                return;
+            }
+
+            escapeSequenceStarted = true;
+            StartEscapeClientRpc();
+        }
+
         [ClientRpc]
         private void StartEscapeClientRpc()
         {
-            StartCoroutine(PlayEscapeSequence());
+            if (escapeRoutine != null)
+            {
+                StopCoroutine(escapeRoutine);
+            }
+
+            escapeRoutine = StartCoroutine(PlayEscapeSequence());
+        }
+
+        [ClientRpc]
+        private void ApplyResetPoseClientRpc(Vector3 position, Quaternion rotation)
+        {
+            if (escapeRoutine != null)
+            {
+                StopCoroutine(escapeRoutine);
+                escapeRoutine = null;
+            }
+
+            transform.SetPositionAndRotation(position, rotation);
         }
 
         private System.Collections.IEnumerator PlayEscapeSequence()

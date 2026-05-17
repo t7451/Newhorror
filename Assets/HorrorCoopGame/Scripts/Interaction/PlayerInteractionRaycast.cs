@@ -1,4 +1,5 @@
 using TMPro;
+using HorrorCoopGame.Game;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -51,6 +52,14 @@ namespace HorrorCoopGame.Interaction
 
             // Throttle raycasts/overlap queries; prompt UI is updated every frame
             // off the cached target so it stays responsive without per-frame physics queries.
+            if (!IsRoundPlaying())
+            {
+                currentTarget = null;
+                interactPressed = false;
+                UpdatePromptUi();
+                return;
+            }
+
             if (Time.time >= nextTargetUpdateTime)
             {
                 nextTargetUpdateTime = Time.time + Mathf.Max(0f, targetUpdateInterval);
@@ -70,6 +79,11 @@ namespace HorrorCoopGame.Interaction
                     currentTarget.Interact(NetworkManager.Singleton.LocalClientId);
                 }
             }
+        }
+
+        private static bool IsRoundPlaying()
+        {
+            return GameManager.Instance == null || GameManager.Instance.Phase.Value == GamePhase.Playing;
         }
 
         private void UpdateTarget()
