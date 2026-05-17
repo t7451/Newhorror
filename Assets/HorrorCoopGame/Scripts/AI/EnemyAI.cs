@@ -30,8 +30,11 @@ namespace HorrorCoopGame.AI
 
         [Header("Optimization")]
         [SerializeField] private float destinationUpdateInterval = 0.2f;
+        [Tooltip("Multiplier applied to update interval when no player is inside loseSightRadius. Saves CPU on idle/far enemies (mobile/WebGL).")]
+        [SerializeField] private float idleUpdateMultiplier = 4f;
 
         private NavMeshAgent agent;
+        private Transform cachedTransform;
         private State state = State.Patrol;
         private float nextPathUpdateTime;
         private float nextAttackTime;
@@ -54,7 +57,8 @@ namespace HorrorCoopGame.AI
             }
 
             agent = GetComponent<NavMeshAgent>();
-            patrolAnchor = transform.position;
+            cachedTransform = transform;
+            patrolAnchor = cachedTransform.position;
             ChoosePatrolTarget();
         }
 
@@ -67,16 +71,21 @@ namespace HorrorCoopGame.AI
 
             if (!IsRoundPlaying())
             {
-                agent.SetDestination(transform.position);
+                agent.SetDestination(cachedTransform.position);
                 return;
             }
 
-            if (Time.time < nextPathUpdateTime)
+            float now = Time.time;
+            if (now < nextPathUpdateTime)
             {
                 return;
             }
 
-            nextPathUpdateTime = Time.time + destinationUpdateInterval;
+            // Adaptive throttling: when patrolling (no target) update less often.
+            float interval = state == State.Patrol
+                ? destinationUpdateInterval * Mathf.Max(1f, idleUpdateMultiplier)
+                : destinationUpdateInterval;
+            nextPathUpdateTime = now + interval;
 
             switch (state)
             {
@@ -117,15 +126,16 @@ namespace HorrorCoopGame.AI
                 return;
             }
 
-            float distance = Vector3.Distance(transform.position, chaseTarget.position);
-            if (distance > loseSightRadius)
+            // sqrMagnitude avoids a per-tick sqrt; matters when many enemies tick on mobile.
+            float sqrDistance = (chaseTarget.position - cachedTransform.position).sqrMagnitude;
+            if (sqrDistance > loseSightRadius * loseSightRadius)
             {
                 chaseTarget = null;
                 state = State.Patrol;
                 return;
             }
 
-            if (distance <= attackRange)
+            if (sqrDistance <= attackRange * attackRange)
             {
                 state = State.Attack;
                 return;
@@ -142,14 +152,15 @@ namespace HorrorCoopGame.AI
                 return;
             }
 
-            float distance = Vector3.Distance(transform.position, chaseTarget.position);
-            if (distance > attackRange + 0.5f)
+            float breakRange = attackRange + 0.5f;
+            float sqrDistance = (chaseTarget.position - cachedTransform.position).sqrMagnitude;
+            if (sqrDistance > breakRange * breakRange)
             {
                 state = State.Chase;
                 return;
             }
 
-            agent.SetDestination(transform.position);
+            agent.SetDestination(cachedTransform.position);
 
             if (Time.time < nextAttackTime)
             {
@@ -167,6 +178,7 @@ namespace HorrorCoopGame.AI
         {
             closest = null;
             float bestSqr = radius * radius;
+            Vector3 selfPosition = cachedTransform.position;
 
             foreach (var kvp in NetworkManager.Singleton.ConnectedClients)
             {
@@ -176,7 +188,7 @@ namespace HorrorCoopGame.AI
                     continue;
                 }
 
-                float sqr = (playerObject.transform.position - transform.position).sqrMagnitude;
+                float sqr = (playerObject.transform.position - selfPosition).sqrMagnitude;
                 if (sqr <= bestSqr)
                 {
                     bestSqr = sqr;

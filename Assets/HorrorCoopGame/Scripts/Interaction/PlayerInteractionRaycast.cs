@@ -18,9 +18,14 @@ namespace HorrorCoopGame.Interaction
         [SerializeField] private LayerMask interactableLayer = ~0;
         [SerializeField] private TextMeshProUGUI promptText;
 
+        [Header("Optimization")]
+        [Tooltip("Seconds between target raycasts. ~12 Hz is plenty for prompts and saves significant CPU on mobile/WebGL.")]
+        [SerializeField] private float targetUpdateInterval = 0.08f;
+
         private readonly Collider[] overlapBuffer = new Collider[8];
         private IInteractable currentTarget;
         private bool interactPressed;
+        private float nextTargetUpdateTime;
 
         public override void OnNetworkSpawn()
         {
@@ -45,6 +50,8 @@ namespace HorrorCoopGame.Interaction
                 return;
             }
 
+            // Throttle raycasts/overlap queries; prompt UI is updated every frame
+            // off the cached target so it stays responsive without per-frame physics queries.
             if (!IsRoundPlaying())
             {
                 currentTarget = null;
@@ -53,12 +60,20 @@ namespace HorrorCoopGame.Interaction
                 return;
             }
 
-            UpdateTarget();
+            if (Time.time >= nextTargetUpdateTime)
+            {
+                nextTargetUpdateTime = Time.time + Mathf.Max(0f, targetUpdateInterval);
+                UpdateTarget();
+            }
+
             UpdatePromptUi();
 
             if (interactPressed)
             {
                 interactPressed = false;
+                // Refresh target immediately on press so a freshly-aimed item
+                // can be interacted with even if the throttled tick is pending.
+                UpdateTarget();
                 if (currentTarget != null)
                 {
                     currentTarget.Interact(NetworkManager.Singleton.LocalClientId);
