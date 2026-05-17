@@ -53,9 +53,27 @@ Assets/
 - `Assets/HorrorCoopGame/Scripts/AI/SanityDrain.cs` (darkness drain + audio hallucinations)
 
 ### Phase 7 — Polish
-- `Assets/HorrorCoopGame/Scripts/Environment/DayNightCycle.cs` (baked-lighting friendly)
+- `Assets/HorrorCoopGame/Scripts/Environment/DayNightCycle.cs` (baked-lighting friendly, throttled+lerped lighting samples)
 - `Assets/HorrorCoopGame/Scripts/Environment/PerformantFlashlight.cs` (shadowless spotlight)
+- `Assets/HorrorCoopGame/Scripts/Environment/PerformanceBootstrap.cs` (runtime quality/FPS auto-tuner, mobile-first WebGL-aware)
 - `Assets/HorrorCoopGame/Scripts/UI/ResponsiveCanvasScaler.cs` (1920x1080 reference, adaptive match)
+
+## Browser / Mobile Performance & Smoothing
+The prototype is tuned for WebGL in a browser with mobile as the priority target.
+
+### PerformanceBootstrap
+Add `PerformanceBootstrap` to a GameObject in your first-loaded scene. It auto-detects mobile (including mobile browsers via `SystemInfo.deviceType == Handheld`) and applies:
+- `Application.targetFrameRate` (60 desktop / 60 mobile by default; configurable)
+- `QualitySettings.vSyncCount = 0` so the target FPS actually takes effect (WebGL relies on browser rAF)
+- `Screen.sleepTimeout = NeverSleep` so phones don't lock mid-session
+- `Time.maximumDeltaTime` cap so a long browser frame doesn't snowball into a physics death-spiral
+- Mobile: shadows disabled, low shadow resolution + distance, reduced pixel-light count, reduced LOD bias, mipmap streaming bias, no anisotropy/MSAA, no realtime reflection probes, cheaper fixed timestep
+
+### Gameplay Smoothing
+- `PlayerController` low-pass filters move + look input and exponentially smooths camera pitch/yaw. Touch-stick jitter and one-off WebGL frame spikes no longer translate directly into camera/character snapping. Smooth times are per-platform inspector fields.
+- `DayNightCycle` evaluates lighting gradients on a throttled interval and smoothly lerps the displayed sun/ambient color and sun rotation between samples — cheap on mobile, visually smoother than per-frame evaluation.
+- `EnemyAI` adaptively throttles destination updates (slower when no players are in detection range), uses `sqrMagnitude` to avoid per-tick `sqrt`, and caches its transform.
+- `PlayerInteractionRaycast` throttles physics raycasts/overlap queries (~12 Hz default) while still refreshing instantly on interact press, so prompts stay responsive without per-frame physics queries.
 
 ## On-Screen Touch Setup (Phase 2)
 1. Install packages:

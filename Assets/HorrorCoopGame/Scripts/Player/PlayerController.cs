@@ -21,6 +21,16 @@ namespace HorrorCoopGame.Player
         [SerializeField] private float minPitch = -85f;
         [SerializeField] private float maxPitch = 85f;
 
+        [Header("Smoothing")]
+        [Tooltip("Seconds of exponential smoothing applied to move input. Removes touch-stick jitter and per-frame input noise.")]
+        [SerializeField] private float moveSmoothTime = 0.08f;
+        [Tooltip("Seconds of exponential smoothing applied to look input on mouse. Lower = snappier.")]
+        [SerializeField] private float mouseLookSmoothTime = 0.02f;
+        [Tooltip("Seconds of exponential smoothing applied to look input on touch. Higher = smoother but slightly laggier.")]
+        [SerializeField] private float touchLookSmoothTime = 0.06f;
+        [Tooltip("Seconds of smoothing for camera pitch/yaw. 0 to disable. Smooths jittery frames on WebGL.")]
+        [SerializeField] private float cameraSmoothTime = 0.04f;
+
         [Header("Touch UI")]
         [SerializeField] private Canvas touchControlsCanvas;
 
@@ -31,6 +41,16 @@ namespace HorrorCoopGame.Player
         private Vector2 lookInput;
         private bool sprintPressed;
         private bool jumpQueued;
+
+        // Smoothing state
+        private Vector2 smoothedMoveInput;
+        private Vector2 moveInputVelocity;
+        private Vector2 smoothedLookInput;
+        private Vector2 lookInputVelocity;
+        private float displayedPitch;
+        private float pitchVelocity;
+        private float displayedYaw;
+        private float yawVelocity;
 
         private float verticalVelocity;
         private float pitch;
@@ -69,6 +89,9 @@ namespace HorrorCoopGame.Player
                 Cursor.lockState = CursorLockMode.Locked;
                 Cursor.visible = false;
             }
+
+            displayedYaw = transform.eulerAngles.y;
+            displayedPitch = pitch;
         }
 
         public override void OnNetworkDespawn()
@@ -117,16 +140,44 @@ namespace HorrorCoopGame.Player
         private void ApplyLook()
         {
             float sensitivity = isMobile ? touchLookSensitivity : mouseLookSensitivity;
-            Vector2 scaledLook = lookInput * sensitivity;
+            float lookSmoothTime = isMobile ? touchLookSmoothTime : mouseLookSmoothTime;
+
+            // Low-pass filter the raw look input. Smooths jittery touch deltas
+            // and frame-spike spikes on WebGL without adding perceptible lag.
+            smoothedLookInput = Vector2.SmoothDamp(
+                smoothedLookInput,
+                lookInput,
+                ref lookInputVelocity,
+                Mathf.Max(0f, lookSmoothTime),
+                Mathf.Infinity,
+                Time.deltaTime);
+
+            Vector2 scaledLook = smoothedLookInput * sensitivity;
 
             pitch = Mathf.Clamp(pitch - scaledLook.y, minPitch, maxPitch);
 
-            if (cameraPivot != null)
+            // Drive yaw via an internal accumulator and a smoothed displayed
+            // yaw so character rotation interpolates cleanly between frames.
+            float targetYaw = transform.eulerAngles.y + scaledLook.x;
+
+            if (cameraSmoothTime > 0f)
             {
-                cameraPivot.localRotation = Quaternion.Euler(pitch, 0f, 0f);
+                displayedPitch = Mathf.SmoothDampAngle(displayedPitch, pitch, ref pitchVelocity, cameraSmoothTime, Mathf.Infinity, Time.deltaTime);
+                displayedYaw = Mathf.SmoothDampAngle(displayedYaw, targetYaw, ref yawVelocity, cameraSmoothTime, Mathf.Infinity, Time.deltaTime);
+            }
+            else
+            {
+                displayedPitch = pitch;
+                displayedYaw = targetYaw;
             }
 
-            transform.Rotate(Vector3.up * scaledLook.x);
+            if (cameraPivot != null)
+            {
+                cameraPivot.localRotation = Quaternion.Euler(displayedPitch, 0f, 0f);
+            }
+
+            Vector3 currentEuler = transform.eulerAngles;
+            transform.rotation = Quaternion.Euler(currentEuler.x, displayedYaw, currentEuler.z);
         }
 
         private void ApplyMovement()
@@ -137,8 +188,18 @@ namespace HorrorCoopGame.Player
                 verticalVelocity = -2f;
             }
 
+            // Smooth raw move input so direction changes ease in/out instead
+            // of snapping. Helps both touch-stick precision and WebGL frame jitter.
+            smoothedMoveInput = Vector2.SmoothDamp(
+                smoothedMoveInput,
+                moveInput,
+                ref moveInputVelocity,
+                Mathf.Max(0f, moveSmoothTime),
+                Mathf.Infinity,
+                Time.deltaTime);
+
             float speed = sprintPressed ? sprintSpeed : walkSpeed;
-            Vector3 planarMove = (transform.right * moveInput.x + transform.forward * moveInput.y) * speed;
+            Vector3 planarMove = (transform.right * smoothedMoveInput.x + transform.forward * smoothedMoveInput.y) * speed;
             characterController.Move(planarMove * Time.deltaTime);
 
             if (jumpQueued && grounded)
